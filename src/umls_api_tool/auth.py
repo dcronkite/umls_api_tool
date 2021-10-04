@@ -1,7 +1,9 @@
 import json
+import urllib.parse
 
 import requests
 from lxml.html import fromstring
+from loguru import logger
 
 
 class Authenticator:
@@ -36,9 +38,24 @@ class Authenticator:
         return r.text
 
     def get(self, *url, **params):
-        r = requests.get(
-            '/'.join((self.base_url, *url)),
-            params=params | {'ticket': self.get_service_ticket()},
-        )
+        if not params:
+            params = {'ticket': self.get_service_ticket()}
+        else:
+            params = {
+                'pageSize': 200,
+                **params,
+            }
+        r = None
+        try:
+            r = requests.get(
+                '/'.join((self.base_url, *url)),
+                params=urllib.parse.urlencode(params, safe=','),
+            )
+            r.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logger.error(e)
+            if r:
+                print(r.text)
+            raise e
         r.encoding = 'utf-8'
         return json.loads(r.text)
