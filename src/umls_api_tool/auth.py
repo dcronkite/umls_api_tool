@@ -39,9 +39,13 @@ class Authenticator:
 
     def get(self, *url, **params):
         if not params:
-            params = {'ticket': self.get_service_ticket()}
+            params = {
+                'ticket': self.get_service_ticket(),
+                'pageSize': 200,
+            }
         else:
             params = {
+                'ticket': self.get_service_ticket(),
                 'pageSize': 200,
                 **params,
             }
