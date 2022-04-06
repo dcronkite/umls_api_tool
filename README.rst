@@ -45,15 +45,18 @@ Prerequisites
 -------------
 
 -  Python 3.8+ (probably works in earlier versions)
-
-
-Usage
-=====
-
 - Create UMLS account (see https://uts.nlm.nih.gov/uts/umls/home)
 - Obtain UMLS API KEY (once signed in, see https://uts.nlm.nih.gov/uts/profile)
 - pip install git+https://github.com/dcronkite/umls_api_tool.git
   * Or, `git pull`; `cd umls_api_tool`; `pip install .`
+
+Usage
+=====
+
+See the examples in the `examples` folder to see how to use the code.
+
+Use the [UMLS REST API Home Page](https://documentation.uts.nlm.nih.gov/rest/home.html) for complete API documentation.
+
 
 Versions
 ========

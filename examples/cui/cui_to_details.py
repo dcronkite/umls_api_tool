@@ -6,13 +6,13 @@ Usage: python cui_to_details.py -k API_KEY [-v current]
 import csv
 
 from umls_api_tool.args import get_apikey_version
-from umls_api_tool.auth import BasicAuthenticator
+from umls_api_tool.auth import BasicAuthenticator, FriendlyAuthenticator
 
 
 def cui_to_details(apikey, version='current'):
     auth = BasicAuthenticator(apikey)
     cui_data = []
-    semtypes = set()
+    semtypes = set()  # needed for determining all possible headers
     with open('cui-list.txt') as fh:
         for line in fh:
             cui = line.strip()
@@ -39,6 +39,35 @@ def cui_to_details(apikey, version='current'):
         writer.writerows(cui_data)
 
 
+def cui_to_details_friendly(apikey, version='current'):
+    """Same as above, but using friendly authenticator."""
+    auth = FriendlyAuthenticator(apikey, version)
+    cui_data = []
+    semtypes = set()  # needed for determining all possible headers
+    with open('cui-list.txt') as fh:
+        for line in fh:
+            cui = line.strip()
+            data = auth.get_details_for_cui(cui)
+            print(data)
+            cui_data.append(
+                {
+                    'cui': data['cui'],
+                    'name': data['name'],
+                    'definition': data['definition'],  # not in previous model
+                    'source': data['source'],
+                } | {
+                    semtype: 1 for semtype in data['semtypes']
+                }
+            )
+            semtypes |= set(data['semtypes'])
+
+    with open('cui-details.csv', 'w', newline='') as out:
+        writer = csv.DictWriter(out, fieldnames=['cui', 'name', 'definition', 'source'] + list(sorted(semtypes)))
+        writer.writeheader()
+        writer.writerows(cui_data)
+
+
 if __name__ == '__main__':
     apikey, version = get_apikey_version()
-    cui_to_details(apikey, version)
+    # cui_to_details(apikey, version)
+    cui_to_details_friendly(apikey, version)

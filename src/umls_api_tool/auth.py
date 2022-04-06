@@ -85,6 +85,12 @@ class LazyAuthenticator:
             **params
         )
 
+    def get_details_for_cui(self, cui, version=None, **params):
+        return self.auth.get(
+            'content', version, 'CUI', cui,
+            **params
+        )
+
 
 class FriendlyAuthenticator:
     """Attempts to format results and provide iterators. If you want more control, try Lazy or Basic."""
@@ -123,3 +129,19 @@ class FriendlyAuthenticator:
                 'source': definition['rootSource'],
                 'definition': definition['value'],
             }
+
+    def get_details_for_cui(self, cui, version=None, **params) -> dict:
+        data = self.auth.get_details_for_cui(cui, version or self.version, **params)
+        data2 = self.get_definitions_for_cui(cui, pageSize=1, **params)
+        if self._check_error(data, cui) or data2 is None:
+            return None
+        details = data['result']
+        definition = list(data2)[0]
+        return {
+            'cui': cui,
+            'name': details['name'],
+            'definition': definition['definition'],
+            'source': definition['source'],
+            'semtypes': [semtype['name'] for semtype in details['semanticTypes']],
+        }
+
