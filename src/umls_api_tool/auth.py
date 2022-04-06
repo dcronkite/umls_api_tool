@@ -1,5 +1,6 @@
 import json
 import urllib.parse
+from typing import Iterator
 
 import requests
 from lxml.html import fromstring
@@ -63,3 +64,45 @@ class BasicAuthenticator:
             raise e
         r.encoding = 'utf-8'
         return json.loads(r.text)
+
+
+class LazyAuthenticator:
+    """ Authenticator which just pass on the queries to the end user. """
+
+    def __init__(self, apikey, version='current'):
+        self.auth = BasicAuthenticator(apikey)
+        self.version = version
+
+    def get_atoms_for_cui(self, cui, version=None, **params):
+        return self.auth.get(
+            'content', version or self.version, 'CUI', cui, 'atoms',
+            **params,
+        )
+
+
+class FriendlyAuthenticator:
+    """Attempts to format results and provide iterators. If you want more control, try Lazy or Basic."""
+
+    def __init__(self, apikey, version='current'):
+        self.auth = LazyAuthenticator(apikey)
+        self.version = version
+
+    def _check_error(self, data, context):
+        if err := data.get('error'):
+            logger.warning(f'Error for {context}: {err}')
+            return True
+        return False
+
+    def get_atoms_for_cui(self, cui, version=None, **params) -> Iterator[dict]:
+        """Returns generator spitting out the next atom"""
+        data = self.auth.get_atoms_for_cui(cui, version or self.version, **params)
+        if self._check_error(data, cui):
+            return None
+        for atom in data['result']:
+            yield {
+                'cui': cui,
+                'aui': atom['ui'],
+                'name': atom['name'],
+                'source': atom['rootSource'],
+                'termtype': atom['termType'],
+            }

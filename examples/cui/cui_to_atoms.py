@@ -6,7 +6,7 @@ Usage: python cui_to_atoms.py -k API_KEY [-v current]
 import csv
 
 from umls_api_tool.args import get_apikey_version
-from umls_api_tool.auth import BasicAuthenticator
+from umls_api_tool.auth import BasicAuthenticator, FriendlyAuthenticator
 
 
 def cui_to_atoms(apikey, version='current', language='ENG'):
@@ -39,6 +39,19 @@ def cui_to_atoms(apikey, version='current', language='ENG'):
         writer.writerows(cui_data)
 
 
+def cui_to_atoms_friendly(apikey, version='current', language='ENG'):
+    auth = FriendlyAuthenticator(apikey, version)
+    with open('cui-list.txt') as fh:
+        with open('cui-atoms.csv', 'w', newline='') as out:
+            writer = csv.DictWriter(out, fieldnames=['cui', 'aui', 'name', 'source', 'termtype'])
+            writer.writeheader()
+            for line in fh:
+                cui = line.strip()
+                for atom in auth.get_atoms_for_cui(cui, language=language):
+                    writer.writerow(atom)
+
+
 if __name__ == '__main__':
     apikey, version = get_apikey_version()
-    cui_to_atoms(apikey, version)
+    # cui_to_atoms(apikey, version)
+    cui_to_atoms_friendly(apikey, version)
