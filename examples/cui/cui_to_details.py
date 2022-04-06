@@ -48,7 +48,6 @@ def cui_to_details_friendly(apikey, version='current'):
         for line in fh:
             cui = line.strip()
             data = auth.get_details_for_cui(cui)
-            print(data)
             cui_data.append(
                 {
                     'cui': data['cui'],
