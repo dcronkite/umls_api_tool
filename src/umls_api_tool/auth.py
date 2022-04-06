@@ -79,6 +79,12 @@ class LazyAuthenticator:
             **params,
         )
 
+    def get_definitions_for_cui(self, cui, version=None, **params):
+        return self.auth.get(
+            'content', version, 'CUI', cui, 'definitions',
+            **params
+        )
+
 
 class FriendlyAuthenticator:
     """Attempts to format results and provide iterators. If you want more control, try Lazy or Basic."""
@@ -105,4 +111,15 @@ class FriendlyAuthenticator:
                 'name': atom['name'],
                 'source': atom['rootSource'],
                 'termtype': atom['termType'],
+            }
+
+    def get_definitions_for_cui(self, cui, version=None, **params) -> Iterator[dict]:
+        data = self.auth.get_definitions_for_cui(cui, version or self.version, **params)
+        if self._check_error(data, cui):
+            return None
+        for definition in data['result']:
+            yield {
+                'cui': cui,
+                'source': definition['rootSource'],
+                'definition': definition['value'],
             }
