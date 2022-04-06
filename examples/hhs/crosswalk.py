@@ -6,11 +6,11 @@ Usage: python crosswalk.py -k API_KEY [-v current]
     * the 'src' directory must be on your PYTHONPATH (set/export PYTHONPATH=/path/to/src
 """
 from umls_api_tool.args import get_apikey_version
-from umls_api_tool.auth import Authenticator
+from umls_api_tool.auth import BasicAuthenticator
 
 
 def parse_hpo_code_file(apikey, version='current'):
-    auth = Authenticator(apikey)
+    auth = BasicAuthenticator(apikey)
     with open('hpo-codes.txt') as fh:
         for line in fh:
             code = line.strip()

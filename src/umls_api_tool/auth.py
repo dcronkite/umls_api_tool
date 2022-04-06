@@ -6,7 +6,7 @@ from lxml.html import fromstring
 from loguru import logger
 
 
-class Authenticator:
+class BasicAuthenticator:
 
     def __init__(self, apikey):
         self.time_granting_ticket = self.get_time_granting_ticket(apikey)

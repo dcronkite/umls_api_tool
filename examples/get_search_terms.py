@@ -5,7 +5,7 @@ Usage: python get_search_terms.py -k API_KEY [-v current] --search-terms covid
     * the 'src' directory must be on your PYTHONPATH (set/export PYTHONPATH=/path/to/src
 """
 from umls_api_tool.args import get_arg_dict
-from umls_api_tool.auth import Authenticator
+from umls_api_tool.auth import BasicAuthenticator
 
 from loguru import logger
 
@@ -20,7 +20,7 @@ def find_search_terms(apikey, version, search_terms, source_vocabs=None, any_ter
     :param any_term: if True, each term in `search_terms` is executed as a separate search
     :return:
     """
-    auth = Authenticator(apikey)
+    auth = BasicAuthenticator(apikey)
     if not any_term:
         search_terms = [' '.join(search_terms)]
     for term in search_terms:

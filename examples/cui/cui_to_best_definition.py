@@ -6,14 +6,14 @@ Usage: python cui_to_best_definition.py -k API_KEY [-v current]
 import csv
 
 from umls_api_tool.args import get_apikey_version
-from umls_api_tool.auth import Authenticator
+from umls_api_tool.auth import BasicAuthenticator
 
 
 def cui_to_details(apikey, version='current', sabs=None):
     if not sabs:
         sabs = ['MSH', 'NCI']
     sabs = ','.join(sabs)  # this doesn't seem to work?
-    auth = Authenticator(apikey)
+    auth = BasicAuthenticator(apikey)
     cui_data = []
     with open('cui-list.txt') as fh:
         for line in fh:
