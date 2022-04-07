@@ -40,7 +40,7 @@ def cui_to_atoms(apikey, version='current', language='ENG'):
 
 
 def cui_to_atoms_friendly(apikey, version='current', language='ENG'):
-    auth = FriendlyAuthenticator(apikey, version)
+    auth = FriendlyAuthenticator.from_apikey(apikey, version)
     with open('cui-list.txt') as fh:
         with open('cui-atoms.csv', 'w', newline='') as out:
             writer = csv.DictWriter(out, fieldnames=['cui', 'aui', 'name', 'source', 'termtype'])

@@ -41,7 +41,7 @@ def cui_to_details(apikey, version='current'):
 
 def cui_to_details_friendly(apikey, version='current'):
     """Same as above, but using friendly authenticator."""
-    auth = FriendlyAuthenticator(apikey, version)
+    auth = FriendlyAuthenticator.from_apikey(apikey, version)
     cui_data = []
     semtypes = set()  # needed for determining all possible headers
     with open('cui-list.txt') as fh:

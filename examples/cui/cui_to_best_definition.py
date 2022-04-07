@@ -43,7 +43,7 @@ def cui_to_definition_friendly(apikey, version='current', sabs=None):
     if not sabs:
         sabs = ['MSH', 'NCI']
     sabs = ','.join(sabs)  # this doesn't seem to work?
-    auth = FriendlyAuthenticator(apikey, version)
+    auth = FriendlyAuthenticator.from_apikey(apikey, version)
     with open('cui-list.txt') as fh:
         with open('cui-definitions.csv', 'w', newline='') as out:
             writer = csv.DictWriter(out, fieldnames=['cui', 'source', 'definition'])
