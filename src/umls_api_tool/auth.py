@@ -1,4 +1,5 @@
 import json
+import time
 import urllib.parse
 from typing import Iterator
 
@@ -50,18 +51,14 @@ class BasicAuthenticator:
             **params,
         }
         self.request_limiter.ready()
-        r = None
+        r = requests.get(
+            '/'.join((self.base_url, *url)),
+            params=urllib.parse.urlencode(params, safe=','),
+        )
         try:
-            r = requests.get(
-                '/'.join((self.base_url, *url)),
-                params=urllib.parse.urlencode(params, safe=','),
-            )
             r.raise_for_status()
         except requests.exceptions.HTTPError as e:
             logger.error(e)
-            if r:
-                print(r.text)
-            raise e
         r.encoding = 'utf-8'
         return json.loads(r.text)
 
@@ -140,15 +137,17 @@ class FriendlyAuthenticator:
 
     def get_details_for_cui(self, cui, version=None, **params) -> dict:
         data = self.auth.get_details_for_cui(cui, version or self.version, **params)
-        data2 = self.get_definitions_for_cui(cui, pageSize=1, **params)
-        if self._check_error(data, cui) or data2 is None:
+        try:
+            definition = next(self.get_definitions_for_cui(cui, pageSize=1, **params))
+        except StopIteration:
+            definition = None
+        if self._check_error(data, cui):
             return None
         details = data['result']
-        definition = list(data2)[0]
         return {
             'cui': cui,
             'name': details['name'],
-            'definition': definition['definition'],
-            'source': definition['source'],
+            'definition': definition['definition'] if definition else '',
+            'source': definition['source'] if definition else '',
             'semtypes': [semtype['name'] for semtype in details['semanticTypes']],
         }
