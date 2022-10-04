@@ -96,9 +96,14 @@ class BasicAuthenticator:
             if self._has_error(result):
                 return results
             # prepare for retrieving subsequent pages
+            rec_count = result.get('recCount', None)
+            if rec_count == 0:
+                return None
+            elif rec_count == 1:
+                return result
             page_number = result['pageNumber'] + 1  # prepare to get next page
             params['pageNumber'] = page_number
-            page_count = result.get('pageCount', result.get('recCount', 1))  # check for single-page results
+            page_count = result.get('pageCount', 1)  # check for single-page results
             if page_count == 1:
                 return result
             results['result'] += result['result']
@@ -156,7 +161,10 @@ class FriendlyAuthenticator:
         return cls(BasicAuthenticator(apikey, request_limiter=request_limiter), version=version)
 
     def _check_error(self, data, context):
-        if err := data.get('error'):
+        if data is None:
+            logger.warning(f'Data is empty: {context}')
+            return True
+        elif err := data.get('error'):
             logger.warning(f'Error for {context}: {err}')
             return True
         return False
@@ -220,14 +228,18 @@ class FriendlyAuthenticator:
             rel_data = self.auth.get(relation['relatedId'])['result']
             if (cui_url := rel_data.get('concepts', rel_data.get('concept', None))) is not None:
                 cui_data = self.auth.get(cui_url)
+                if not cui_data:
+                    logger.warning(f'Failed: {rel_data}')
+                    continue
+                cui_data = cui_data['result']
+            elif rel_data['classType'] == 'Concept':
+                cui_data = rel_data
             else:
                 logger.warning(f'Failed to identify concept: {rel_data}')
                 continue
-            if not cui_data:
-                logger.warning(f'Failed: {rel_data}')
+            if not cui_data or cui_data.get('recCount', -1) == 0:
                 continue
-            cui_data = cui_data['result']
-            if 'results' in cui_data:
+            elif 'results' in cui_data:
                 target_cui = cui_data['results'][0]['ui']
                 name = cui_data['results'][0]['name']
             else:

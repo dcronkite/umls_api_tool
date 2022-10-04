@@ -13,7 +13,7 @@ def cui_to_relations_friendly(apikey, version='current', language='ENG'):
                                                      'additional_relation_label'])
             writer.writeheader()
             for i, line in enumerate(fh):
-                if i > 2:
+                if i > 1:
                     break  # only do 2 lines as this takes a while (and don't want to abuse testing)
                 cui = line.strip()
                 for atom in auth.get_relations_for_cui(cui, language=language):
