@@ -1,5 +1,4 @@
 import json
-import time
 import urllib.parse
 from typing import Iterator
 
@@ -44,23 +43,66 @@ class BasicAuthenticator:
         )
         return r.text
 
-    def get(self, *url, **params):
+    def _build_url(self, *url):
+        if len(url) == 1 and url[0].startswith('https'):
+            return url[0]
+        else:
+            return '/'.join((self.base_url, *url))
+
+    def _has_error(self, data: dict):
+        if 'status' in data:
+            logger.error(data)
+            return True
+        return False
+
+    def get(self, *url, limit_pages=None, **params):
+        """
+
+        :param url: destination to query
+        :param limit_pages: return no more than this number of pages (None/0 will be interpreted as return everything)
+        :param params: these will be passed onto the UTS UMLS API
+        :return:
+        """
+        results = {'result': []}
+        page_number = 1
+        page_count = 1  # init to 1, will be updated each iteration
         params = {
-            'ticket': self.get_service_ticket(),
-            'pageSize': 200,
+            'pageSize': 25,
+            'pageNumber': page_number,
             **params,
         }
-        self.request_limiter.ready()
-        r = requests.get(
-            '/'.join((self.base_url, *url)),
-            params=urllib.parse.urlencode(params, safe=','),
-        )
-        try:
-            r.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            logger.error(e)
-        r.encoding = 'utf-8'
-        return json.loads(r.text)
+        while page_number <= page_count:
+            if limit_pages and limit_pages > page_number:
+                # return early if, e.g., testing: just grab the first page
+                return results
+            # get service ticket
+            params['ticket'] = self.get_service_ticket()
+            self.request_limiter.ready()
+            r = requests.get(
+                self._build_url(*url),
+                params=urllib.parse.urlencode(params, safe=','),
+            )
+            # check for errors
+            try:
+                r.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                logger.error(e)
+            # read result data
+            r.encoding = 'utf-8'
+            if r.status_code == 502:
+                logger.error(r.text)
+                raise ValueError(r.text)
+            result = json.loads(r.text)
+            if self._has_error(result):
+                return results
+            # prepare for retrieving subsequent pages
+            page_number = result['pageNumber'] + 1  # prepare to get next page
+            params['pageNumber'] = page_number
+            page_count = result.get('pageCount', result.get('recCount', 1))  # check for single-page results
+            if page_count == 1:
+                return result
+            results['result'] += result['result']
+        return results
 
 
 class LazyAuthenticator:
@@ -69,6 +111,9 @@ class LazyAuthenticator:
     def __init__(self, authenticator: BasicAuthenticator, version='current'):
         self.auth = authenticator
         self.version = version
+
+    def get(self, *url, **params):
+        return self.auth.get(*url, **params)
 
     @classmethod
     def from_apikey(cls, apikey, version='current', request_limiter=None):
@@ -82,14 +127,20 @@ class LazyAuthenticator:
 
     def get_definitions_for_cui(self, cui, version=None, **params):
         return self.auth.get(
-            'content', version, 'CUI', cui, 'definitions',
+            'content', version or self.version, 'CUI', cui, 'definitions',
             **params
         )
 
     def get_details_for_cui(self, cui, version=None, **params):
         return self.auth.get(
-            'content', version, 'CUI', cui,
+            'content', version or self.version, 'CUI', cui,
             **params
+        )
+
+    def get_relations_for_cui(self, cui, version=None, **params):
+        return self.auth.get(
+            'content', version or self.version, 'CUI', cui, 'relations',
+            **params,
         )
 
 
@@ -151,3 +202,43 @@ class FriendlyAuthenticator:
             'source': definition['source'] if definition else '',
             'semtypes': [semtype['name'] for semtype in details['semanticTypes']],
         }
+
+    def get_relations_for_cui(self, cui, version=None, **params) -> dict:
+        data = self.auth.get_relations_for_cui(cui, version or self.version, **params)
+        if self._check_error(data, cui):
+            return None
+        found_cuis = set()  # cui, relation -> to prevent dupes
+        related_ids = set()  # to prevent duplicates/excess queries
+        for relation in data['result']:
+            # don't call again if this was already found
+            if relation['relatedIdName'] in related_ids:
+                continue
+            related_ids.add(relation['relatedIdName'])
+            # get relevant CUI
+            relation_label = relation['relationLabel']
+            addl_relation_label = relation['additionalRelationLabel']
+            rel_data = self.auth.get(relation['relatedId'])['result']
+            if (cui_url := rel_data.get('concepts', rel_data.get('concept', None))) is not None:
+                cui_data = self.auth.get(cui_url)
+            else:
+                logger.warning(f'Failed to identify concept: {rel_data}')
+                continue
+            if not cui_data:
+                logger.warning(f'Failed: {rel_data}')
+                continue
+            cui_data = cui_data['result']
+            if 'results' in cui_data:
+                target_cui = cui_data['results'][0]['ui']
+                name = cui_data['results'][0]['name']
+            else:
+                target_cui = cui_data['ui']
+                name = cui_data['name']
+            if (cui_group := (target_cui, relation_label, addl_relation_label)) not in found_cuis:
+                found_cuis.add(cui_group)
+                yield {
+                    'source_cui': cui,
+                    'target_cui': target_cui,
+                    'name': name,
+                    'relation_label': relation_label,
+                    'additional_relation_label': addl_relation_label,
+                }
