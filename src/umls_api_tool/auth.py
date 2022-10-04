@@ -148,6 +148,11 @@ class LazyAuthenticator:
             **params,
         )
 
+    def search_for_term(self, term, version=None, **params):
+        return self.auth.get(
+            'search', version or self.version, string=term, **params
+        )
+
 
 class FriendlyAuthenticator:
     """Attempts to format results and provide iterators. If you want more control, try Lazy or Basic."""
@@ -168,6 +173,18 @@ class FriendlyAuthenticator:
             logger.warning(f'Error for {context}: {err}')
             return True
         return False
+
+    def search(self, term, version=None, **params) -> Iterator[dict]:
+        """Search terms and get back result CUIs"""
+        data = self.auth.search_for_term(term, version or self.version, **params)
+        if self._check_error(data, term):
+            return None
+        for result in data['result']['results']:
+            yield {
+                'cui': result['ui'],
+                'name': result['name'],
+                'source': result['rootSource'],
+            }
 
     def get_atoms_for_cui(self, cui, version=None, **params) -> Iterator[dict]:
         """Returns generator spitting out the next atom"""
