@@ -60,7 +60,7 @@ def cui_to_details_friendly(apikey, version='current'):
             )
             semtypes |= set(data['semtypes'])
 
-    with open('cui-details.csv', 'w', newline='') as out:
+    with open('cui-details.csv', 'w', newline='', encoding='utf8') as out:
         writer = csv.DictWriter(out, fieldnames=['cui', 'name', 'definition', 'source'] + list(sorted(semtypes)))
         writer.writeheader()
         writer.writerows(cui_data)

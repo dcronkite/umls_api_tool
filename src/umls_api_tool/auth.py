@@ -101,6 +101,9 @@ class BasicAuthenticator:
                 return None
             elif rec_count == 1:
                 return result
+            if result['pageNumber'] < page_number:  # problem, lower number retrieved, already looked at this
+                logger.warning(f'Page {page_number} not retrievable (expected page count: {page_count}).')
+                return results
             page_number = result['pageNumber'] + 1  # prepare to get next page
             params['pageNumber'] = page_number
             page_count = result.get('pageCount', 1)  # check for single-page results
@@ -130,10 +133,10 @@ class LazyAuthenticator:
             **params,
         )
 
-    def get_definitions_for_cui(self, cui, version=None, **params):
+    def get_definitions_for_cui(self, cui, version=None, language='ENG', **params):
         return self.auth.get(
             'content', version or self.version, 'CUI', cui, 'definitions',
-            **params
+            language=language, **params
         )
 
     def get_details_for_cui(self, cui, version=None, **params):
